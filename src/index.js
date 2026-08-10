@@ -17,22 +17,17 @@ let reconnectTimer = null;
 
 function createSafeMovements(bot) {
   const movements = new Movements(bot);
-
-  // Safety-first navigation. The bot prefers walking/climbing over dropping.
   movements.maxDropDown = 1;
   movements.allowParkour = false;
   movements.allow1by1towers = false;
   movements.canDig = true;
   movements.canOpenDoors = true;
   movements.canUseDoors = true;
-
-  // Make dangerous terrain expensive so the pathfinder prefers safer routes.
   movements.liquidCost = 8;
   movements.emptyCost = 1;
   movements.lavaCost = 1000;
   movements.waterCost = 8;
   movements.mobCost = 20;
-
   return movements;
 }
 
@@ -41,8 +36,6 @@ function isDangerousDrop(bot, position) {
   const y = Math.floor(position.y);
   const z = Math.floor(position.z);
 
-  // Check the block directly below and a few blocks further down.
-  // This is used as an extra guard against falling while following a player.
   for (let depth = 1; depth <= 4; depth++) {
     const block = bot.blockAt(bot.vec3(x, y - depth, z));
     if (!block) return true;
@@ -54,26 +47,16 @@ function isDangerousDrop(bot, position) {
 function followPlayer(bot, username) {
   const target = bot.players[username]?.entity;
   if (!target) {
-    bot.chat('Nevidím ťa. Príď bližšie alebo skontroluj, či ťa server posiela do entity listu.');
+    bot.chat('Nevidím ťa.');
     return;
   }
 
-  const movements = createSafeMovements(bot);
-  bot.pathfinder.setMovements(movements);
-
-  // GoalNear continuously searches a traversable path to the player's current
-  // position. maxDropDown=1 prevents normal paths from using large falls.
+  bot.pathfinder.setMovements(createSafeMovements(bot));
   bot.pathfinder.setGoal(
-    new goals.GoalNear(
-      target.position.x,
-      target.position.y,
-      target.position.z,
-      2
-    ),
+    new goals.GoalNear(target.position.x, target.position.y, target.position.z, 2),
     true
   );
-
-  bot.chat('Idem za tebou. Hľadám bezpečnú trasu s minimom pádu.');
+  bot.chat('Idem za tebou. Hľadám bezpečnú trasu.');
 }
 
 function startBot() {
@@ -92,16 +75,15 @@ function startBot() {
   bot.once('spawn', () => {
     console.log(`Bot joined the server as ${bot.username}.`);
     bot.pathfinder.setMovements(createSafeMovements(bot));
-    bot.chat('Ahoj! Som AI bot. Bezpečne ťa budem nasledovať.');
+    bot.chat('Ahoj! Som AI bot.');
   });
 
   bot.on('chat', (username, message) => {
     if (username === bot.username) return;
-
     const text = message.trim().toLowerCase();
 
     if (text === '!help') {
-      bot.chat('Príkazy: !come, !stop, !pos');
+      bot.chat('Príkazy: !follow, !come, !stop, !pos');
       return;
     }
 
@@ -114,24 +96,38 @@ function startBot() {
     if (text === '!stop') {
       bot.pathfinder.setGoal(null);
       bot.clearControlStates();
-      bot.chat('Zastavujem.');
+      bot.chat('Zastavujem nasledovanie.');
       return;
     }
 
-    if (text === '!come') {
+    if (text === '!come' || text === '!follow') {
       followPlayer(bot, username);
     }
   });
 
-  // If the bot is currently following someone, periodically re-plan from its
-  // current position. This helps when the player climbs, jumps or changes level.
   const followTimer = setInterval(() => {
     if (!bot.entity || !bot.pathfinder.isMoving()) return;
-
     const activeGoal = bot.pathfinder.goal;
     if (!(activeGoal instanceof goals.GoalNear)) return;
 
-    // Extra emergency stop if the bot is about to be over an unsafe drop.
+    const target = Object.values(bot.players)
+      .find(player => player.entity && player.username !== bot.username &&
+        Math.abs(player.entity.position.x - activeGoal.x) < 3 &&
+        Math.abs(player.entity.position.y - activeGoal.y) < 3 &&
+        Math.abs(player.entity.position.z - activeGoal.z) < 3);
+
+    if (target) {
+      bot.pathfinder.setGoal(
+        new goals.GoalNear(
+          target.entity.position.x,
+          target.entity.position.y,
+          target.entity.position.z,
+          2
+        ),
+        true
+      );
+    }
+
     if (isDangerousDrop(bot, bot.entity.position)) {
       bot.clearControlStates();
       bot.pathfinder.stop();
@@ -139,9 +135,8 @@ function startBot() {
   }, 500);
 
   bot.once('end', () => clearInterval(followTimer));
-
-  bot.on('kicked', (reason) => console.log('Kicked:', reason));
-  bot.on('error', (err) => console.error('Bot error:', err.message));
+  bot.on('kicked', reason => console.log('Kicked:', reason));
+  bot.on('error', err => console.error('Bot error:', err.message));
   bot.on('end', () => {
     console.log('Disconnected. Reconnecting...');
     clearTimeout(reconnectTimer);
