@@ -1,0 +1,8 @@
+{
+  "host": "localhost",
+  "port": 25565,
+  "version": false,
+  "username": "AIBot",
+  "auth": "offline",
+  "reconnectDelayMs": 5000
+}
