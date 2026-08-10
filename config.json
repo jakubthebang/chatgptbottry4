@@ -1,8 +1,0 @@
-{
-  "host": "5a1nj6iejs2b4gkgvfy5.t.craftip.net",
-  "port": 25565,
-  "version": false,
-  "auth": "offline",
-  "reconnectDelayMs": 5000,
-  "username": "SurvivalCraftAI"
-}
