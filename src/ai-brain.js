@@ -1,6 +1,4 @@
-const API_URL = process.env.AI_API_URL || 'https://api.openai.com/v1/responses';
-const MODEL = process.env.AI_MODEL || 'gpt-5-mini';
-const API_KEY = process.env.OPENAI_API_KEY || '';
+const { askGemini } = require('./gemini');
 
 function snapshot(bot) {
   const p = bot.entity?.position;
@@ -12,25 +10,16 @@ function snapshot(bot) {
 }
 
 async function askAI(bot, username, message) {
-  if (!API_KEY) return `Rozumiem, ${username}. AI mozog ešte nemá nastavený OPENAI_API_KEY.`;
-
   const prompt = [
     'You control a Minecraft survival bot.',
     'Behave like a cautious human player. Never claim an action happened unless the bot actually performed it.',
-    'The bot can follow, mine, craft, build, fight mobs, explore, eat, and navigate using its local tools.',
+    'The bot can follow, mine, craft, build, fight mobs, explore, eat and navigate using local tools.',
     `Current world state: ${snapshot(bot)}`,
     `Player ${username} says: ${message}`,
-    'Reply in short natural Slovak. If the message asks for an action, state the intended action clearly.'
+    'Reply in short natural Slovak. If the player asks for an action, say what you intend to do.'
   ].join('\n');
-
-  const response = await fetch(API_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${API_KEY}` },
-    body: JSON.stringify({ model: MODEL, input: prompt, max_output_tokens: 120 })
-  });
-  if (!response.ok) throw new Error(`AI HTTP ${response.status}`);
-  const data = await response.json();
-  return data.output_text || data.output?.flatMap(x => x.content || []).map(x => x.text).filter(Boolean).join(' ') || 'Neviem čo povedať.';
+  const reply = await askGemini(prompt);
+  return reply || 'Gemini AI mozog nemá nastavený GEMINI_API_KEY.';
 }
 
 function registerAIBrain(bot) {
@@ -44,8 +33,8 @@ function registerAIBrain(bot) {
       const reply = await askAI(bot, username, clean || message);
       bot.chat(reply.slice(0, 240));
     } catch (err) {
-      console.error('AI brain:', err.message);
-      bot.chat('Môj AI mozog je momentálne nedostupný.');
+      console.error(`[${bot.username}] Gemini AI:`, err.message);
+      bot.chat('Gemini AI je momentálne nedostupné.');
     }
   });
 }
