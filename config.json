@@ -5,8 +5,8 @@
   "auth": "offline",
   "reconnectDelayMs": 5000,
   "bots": [
-    { "username": "AIBot" },
-    { "username": "AIMiner" },
-    { "username": "AIBuilder" }
+    { "username": "AIBot", "role": "leader" },
+    { "username": "AIMiner", "role": "miner" },
+    { "username": "AIBuilder", "role": "builder" }
   ]
 }
