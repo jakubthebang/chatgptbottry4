@@ -2,7 +2,11 @@
   "host": "5a1nj6iejs2b4gkgvfy5.t.craftip.net",
   "port": 25565,
   "version": false,
-  "username": "AIBot",
   "auth": "offline",
-  "reconnectDelayMs": 5000
+  "reconnectDelayMs": 5000,
+  "bots": [
+    { "username": "AIBot" },
+    { "username": "AIMiner" },
+    { "username": "AIBuilder" }
+  ]
 }
